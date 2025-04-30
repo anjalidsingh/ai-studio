@@ -23,7 +23,7 @@ export const fetchModelsApi = async (apiKey) => {
     
     // Format the models data for easier consumption
     return response.data.data.map(model => ({
-      id: model.id,
+      id: ensureFreeModel(model.id),
       name: model.name || formatModelName(model.id),
       description: model.description || '',
       contextLength: model.context_length || 4096,
@@ -56,6 +56,9 @@ export const generateContentApi = async (apiKey, modelId, prompt, options = {}) 
       imageData = null
     } = options;
     
+    // Ensure the model is using the free tier
+    const freeModelId = ensureFreeModel(modelId);
+    
     // Prepare the messages
     let messages = [
       { role: "system", content: systemPrompt }
@@ -81,7 +84,7 @@ export const generateContentApi = async (apiKey, modelId, prompt, options = {}) 
     
     // Prepare the request body
     const requestBody = {
-      model: modelId,
+      model: freeModelId,
       messages,
       temperature,
       max_tokens: maxTokens,
@@ -181,15 +184,33 @@ export const generateContentApi = async (apiKey, modelId, prompt, options = {}) 
 };
 
 /**
+ * Ensure the model ID has the ':free' suffix
+ * @param {string} modelId - The model ID to check
+ * @returns {string} - Model ID with :free suffix
+ */
+function ensureFreeModel(modelId) {
+  if (!modelId) return modelId;
+  
+  // If modelId already has :free or some other suffix, don't modify it
+  if (modelId.includes(':')) return modelId;
+  
+  // Otherwise, append :free
+  return `${modelId}:free`;
+}
+
+/**
  * Format a model ID into a readable name
  * @param {string} modelId - The model ID from the API
  * @returns {string} - Formatted name
  */
 function formatModelName(modelId) {
   try {
-    // Extract the model name from the ID (e.g., "meta/llama-3-8b-instruct:free" -> "Llama 3 8B Instruct")
-    const parts = modelId.split('/');
-    const modelPart = parts[parts.length - 1].split(':')[0];
+    // Remove the :free suffix if present for display
+    const idWithoutSuffix = modelId.split(':')[0];
+    
+    // Extract the model name from the ID (e.g., "meta/llama-3-8b-instruct" -> "Llama 3 8B Instruct")
+    const parts = idWithoutSuffix.split('/');
+    const modelPart = parts[parts.length - 1];
     
     // Clean up the model name
     return modelPart

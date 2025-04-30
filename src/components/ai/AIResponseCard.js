@@ -27,28 +27,30 @@ const AIResponseCard = () => {
   // Parse suggestions from content
   const parseSuggestions = () => {
     // Simple parsing based on common patterns
-    if (!content) return [];
+    // Check if content is a string before using string methods
+    const contentText = typeof content === 'string' ? content : '';
+    if (!contentText) return [];
     
     const suggestions = [];
     
     // Try to parse numbered list items
     const numberedListRegex = /\d+\.\s+(.+?)(?=\n\d+\.|\n\n|$)/gs;
     let match;
-    while ((match = numberedListRegex.exec(content)) !== null) {
+    while ((match = numberedListRegex.exec(contentText)) !== null) {
       suggestions.push(match[1].trim());
     }
     
     // If no numbered items, try bullet points
     if (suggestions.length === 0) {
       const bulletListRegex = /[•\-\*]\s+(.+?)(?=\n[•\-\*]|\n\n|$)/gs;
-      while ((match = bulletListRegex.exec(content)) !== null) {
+      while ((match = bulletListRegex.exec(contentText)) !== null) {
         suggestions.push(match[1].trim());
       }
     }
     
     // If still empty, split by lines
     if (suggestions.length === 0) {
-      return content.split('\n')
+      return contentText.split('\n')
         .map(line => line.trim())
         .filter(line => line.length > 0);
     }
@@ -139,6 +141,11 @@ const AIResponseCard = () => {
     cursor: isDragging ? 'grabbing' : 'grab'
   };
   
+  // Get the content to display
+  const displayContent = typeof content === 'string' ? content : (
+    content && typeof content === 'object' && content.content ? content.content : ''
+  );
+  
   return (
     <div 
       className="ai-response-card"
@@ -173,7 +180,7 @@ const AIResponseCard = () => {
             ))}
           </div>
         ) : (
-          <p>{content}</p>
+          <p>{displayContent}</p>
         )}
       </div>
       

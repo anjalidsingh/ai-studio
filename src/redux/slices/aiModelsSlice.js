@@ -18,6 +18,17 @@ const initialState = {
   apiKeyVerified: false
 };
 
+// Helper to ensure free model
+const ensureFreeModel = (modelId) => {
+  if (!modelId) return null;
+  
+  // If modelId already has :free or some other suffix, don't modify it
+  if (modelId.includes(':')) return modelId;
+  
+  // Otherwise, append :free
+  return `${modelId}:free`;
+};
+
 // Async thunks
 export const fetchModels = createAsyncThunk(
   'aiModels/fetchModels',
@@ -41,8 +52,11 @@ export const generateContent = createAsyncThunk(
       const { apiKey } = getState().aiModels;
       if (!apiKey) return rejectWithValue('API key is required');
       
-      const selectedModel = model || getState().aiModels.selectedModel;
+      let selectedModel = model || getState().aiModels.selectedModel;
       if (!selectedModel) return rejectWithValue('No model selected');
+      
+      // Ensure we're using the free tier
+      selectedModel = ensureFreeModel(selectedModel);
       
       const result = await generateContentApi(apiKey, selectedModel, prompt, options);
       
@@ -75,7 +89,8 @@ const aiModelsSlice = createSlice({
     },
     
     selectModel: (state, action) => {
-      state.selectedModel = action.payload;
+      // Ensure we always store with :free suffix
+      state.selectedModel = ensureFreeModel(action.payload);
     },
     
     clearGeneratedContent: (state) => {
@@ -119,7 +134,7 @@ const aiModelsSlice = createSlice({
         if (!state.selectedModel && action.payload.length > 0) {
           // Try to find a good default model
           const defaultModel = action.payload.find(
-            model => model.id.includes('gpt') || model.id.includes('claude')
+            model => model.id.includes('gpt') || model.id.includes('claude') || model.id.includes('llama')
           ) || action.payload[0];
           
           state.selectedModel = defaultModel.id;

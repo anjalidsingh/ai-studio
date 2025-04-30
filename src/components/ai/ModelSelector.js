@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ensureFreeModelId } from '../../utils/modelUtils';
 import './ModelSelector.css';
 
 const ModelSelector = ({ models, selectedModel, onSelect }) => {
@@ -12,11 +13,19 @@ const ModelSelector = ({ models, selectedModel, onSelect }) => {
     const groups = {};
     
     models.forEach(model => {
+      // Ensure model IDs always have :free suffix
       const provider = model.provider || 'unknown';
       if (!groups[provider]) {
         groups[provider] = [];
       }
-      groups[provider].push(model);
+      
+      // Make a copy with ensured free suffix
+      const safeModel = {
+        ...model,
+        id: ensureFreeModelId(model.id)
+      };
+      
+      groups[provider].push(safeModel);
     });
     
     // Sort models within each group by name
@@ -25,13 +34,19 @@ const ModelSelector = ({ models, selectedModel, onSelect }) => {
     });
     
     setGroupedModels(groups);
-    setFilteredModels(models);
+    setFilteredModels(models.map(model => ({
+      ...model,
+      id: ensureFreeModelId(model.id)
+    })));
   }, [models]);
   
   // Filter models when search query changes
   useEffect(() => {
     if (!searchQuery.trim()) {
-      setFilteredModels(models);
+      setFilteredModels(models.map(model => ({
+        ...model,
+        id: ensureFreeModelId(model.id)
+      })));
       return;
     }
     
@@ -40,7 +55,10 @@ const ModelSelector = ({ models, selectedModel, onSelect }) => {
       model.name.toLowerCase().includes(query) || 
       model.provider.toLowerCase().includes(query) ||
       (model.description && model.description.toLowerCase().includes(query))
-    );
+    ).map(model => ({
+      ...model,
+      id: ensureFreeModelId(model.id)
+    }));
     
     setFilteredModels(filtered);
   }, [searchQuery, models]);
@@ -51,6 +69,15 @@ const ModelSelector = ({ models, selectedModel, onSelect }) => {
   // Handle search input
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
+  };
+  
+  // Ensure selected model is also using :free
+  const safeSelectedModel = ensureFreeModelId(selectedModel);
+  
+  // Handle model selection
+  const handleSelectModel = (modelId) => {
+    // Ensure the model ID has :free suffix when passing to parent
+    onSelect(ensureFreeModelId(modelId));
   };
   
   // Get icon based on model capabilities
@@ -95,8 +122,8 @@ const ModelSelector = ({ models, selectedModel, onSelect }) => {
             filteredModels.map(model => (
               <div 
                 key={model.id}
-                className={`model-option ${selectedModel === model.id ? 'selected' : ''}`}
-                onClick={() => onSelect(model.id)}
+                className={`model-option ${safeSelectedModel === model.id ? 'selected' : ''}`}
+                onClick={() => handleSelectModel(model.id)}
               >
                 <div className="model-icon">
                   <i className={getModelIcon(model)}></i>
@@ -121,8 +148,8 @@ const ModelSelector = ({ models, selectedModel, onSelect }) => {
             {groupedModels[provider].map(model => (
               <div 
                 key={model.id}
-                className={`model-option ${selectedModel === model.id ? 'selected' : ''}`}
-                onClick={() => onSelect(model.id)}
+                className={`model-option ${safeSelectedModel === model.id ? 'selected' : ''}`}
+                onClick={() => handleSelectModel(model.id)}
               >
                 <div className="model-icon">
                   <i className={getModelIcon(model)}></i>
