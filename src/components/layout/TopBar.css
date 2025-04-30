@@ -1,0 +1,205 @@
+.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md);
+    background-color: var(--surface);
+    border-bottom: 1px solid var(--border);
+    height: 64px;
+    position: relative;
+    z-index: 100;
+  }
+  
+  .logo-area {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-weight: 600;
+  }
+  
+  .logo-icon {
+    color: var(--primary);
+    font-size: 24px;
+  }
+  
+  .logo-text {
+    font-size: 1.2rem;
+    color: var(--text-primary);
+  }
+  
+  .project-title-area {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    padding: 0 var(--spacing-xl);
+  }
+  
+  .project-title-input {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: transparent;
+    border: 1px solid transparent;
+    text-align: center;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    width: 100%;
+    max-width: 400px;
+    transition: all 0.2s ease;
+  }
+  
+  .project-title-input:hover {
+    border-color: var(--border);
+  }
+  
+  .project-title-input:focus {
+    outline: none;
+    border-color: var(--primary-light);
+    background-color: rgba(0, 0, 0, 0.03);
+  }
+  
+  .top-bar-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+  
+  .theme-toggle {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .theme-toggle:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  .user-menu-container {
+    position: relative;
+  }
+  
+  .user-menu-button {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    overflow: hidden;
+    padding: 0;
+    transition: all 0.2s ease;
+  }
+  
+  .user-menu-button:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(94, 53, 177, 0.1);
+  }
+  
+  .user-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .user-avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--primary-light);
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  
+  .user-dropdown {
+    position: absolute;
+    top: calc(100% + 5px);
+    right: 0;
+    width: 220px;
+    background-color: var(--surface);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border);
+    z-index: 1000;
+    overflow: hidden;
+  }
+  
+  .user-info {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .user-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 3px;
+  }
+  
+  .user-email {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+  }
+  
+  .dropdown-divider {
+    height: 1px;
+    background-color: var(--border);
+    margin: 5px 0;
+  }
+  
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+  }
+  
+  .dropdown-item:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+  }
+  
+  .dropdown-item.logout {
+    color: var(--error);
+  }
+  
+  .dropdown-item.logout:hover {
+    background-color: rgba(244, 67, 54, 0.1);
+  }
+  
+  @media (max-width: 768px) {
+    .project-title-area {
+      display: none;
+    }
+    
+    .btn span {
+      display: none;
+    }
+    
+    .top-bar-actions {
+      gap: var(--spacing-sm);
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .logo-text {
+      display: none;
+    }
+  }

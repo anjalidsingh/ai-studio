@@ -1,0 +1,210 @@
+.auth-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: var(--spacing-md);
+    background-color: var(--bg-color-lighter);
+  }
+  
+  .auth-container {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+  }
+  
+  .auth-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-lg);
+    gap: var(--spacing-sm);
+    color: var(--primary);
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .auth-logo i {
+    font-size: 2rem;
+  }
+  
+  .auth-logo h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  
+  .auth-content {
+    padding: var(--spacing-lg);
+  }
+  
+  .auth-form-container {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: var(--spacing-lg) 0;
+  }
+  
+  .auth-form-container h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: var(--spacing-xs);
+    color: var(--text-primary);
+    text-align: center;
+  }
+  
+  .auth-subtitle {
+    text-align: center;
+    color: var(--text-tertiary);
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .auth-error {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: var(--error);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+  
+  .auth-error i {
+    font-size: 1.2rem;
+  }
+  
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+  
+  .form-group label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+  
+  .input-with-icon {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  
+  .input-with-icon i {
+    color: var(--text-tertiary);
+    padding: 0 var(--spacing-md);
+  }
+  
+  .input-with-icon input {
+    flex: 1;
+    border: none;
+    padding: var(--spacing-md);
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    background-color: var(--surface);
+  }
+  
+  .input-with-icon input:focus {
+    outline: none;
+  }
+  
+  .form-help-text {
+    display: flex;
+    justify-content: flex-end;
+    font-size: 0.8rem;
+    margin-top: var(--spacing-xs);
+  }
+  
+  .text-link {
+    color: var(--primary);
+    text-decoration: none;
+  }
+  
+  .text-link:hover {
+    text-decoration: underline;
+  }
+  
+  .form-actions {
+    margin-top: var(--spacing-md);
+  }
+  
+  .login-btn {
+    width: 100%;
+    padding: var(--spacing-md);
+    font-weight: 500;
+  }
+  
+  .auth-divider {
+    display: flex;
+    align-items: center;
+    margin: var(--spacing-lg) 0;
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+  }
+  
+  .auth-divider::before,
+  .auth-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background-color: var(--border);
+  }
+  
+  .auth-divider span {
+    padding: 0 var(--spacing-md);
+  }
+  
+  .signup-link,
+  .login-link {
+    width: 100%;
+  }
+  
+  .spinner-small {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: var(--spacing-xs);
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  /* Media queries */
+  @media (max-width: 768px) {
+    .auth-container {
+      box-shadow: none;
+      border-radius: 0;
+    }
+    
+    .auth-form-container {
+      padding: var(--spacing-md) 0;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .auth-form-container h1 {
+      font-size: 1.5rem;
+    }
+    
+    .auth-content {
+      padding: var(--spacing-md);
+    }
+  }

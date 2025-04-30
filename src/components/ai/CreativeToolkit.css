@@ -1,0 +1,52 @@
+.creative-toolkit {
+    margin-top: var(--spacing-md);
+  }
+  
+  .toolkit-items {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-sm);
+  }
+  
+  .toolkit-item {
+    aspect-ratio: 1;
+    background-color: var(--bg-color-lighter);
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: var(--spacing-sm);
+    transition: all 0.2s ease;
+  }
+  
+  .toolkit-item:hover {
+    background-color: rgba(94, 53, 177, 0.1);
+    transform: translateY(-2px);
+  }
+  
+  .toolkit-item i {
+    font-size: 1.5rem;
+    margin-bottom: var(--spacing-xs);
+    color: var(--primary);
+  }
+  
+  .toolkit-name {
+    font-size: 0.7rem;
+    text-align: center;
+    color: var(--text-secondary);
+  }
+  
+  /* Media queries */
+  @media (max-width: 768px) {
+    .toolkit-items {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .toolkit-items {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
