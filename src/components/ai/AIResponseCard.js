@@ -1,5 +1,4 @@
-// src/components/ai/AIResponseCard.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { hideAIResponse, showNotification } from '../../redux/slices/uiSlice';
 import { addContentBlock } from '../../redux/slices/projectsSlice';
@@ -288,12 +287,13 @@ const AIResponseCard = () => {
       ? selectedSuggestions 
       : suggestions.map((_, i) => i);
     
-    // Add each selected suggestion as a content block
+    // Add each selected suggestion as a content block to the appropriate workspace
+    // This now correctly respects the current activeMode
     indicesToApply.forEach(index => {
-      dispatch(addContentBlock({
-        type: 'text',
-        content: suggestions[index]
-      }));
+      const content = suggestions[index];
+      
+      // Use processAiResponse to apply to the current workspace
+      processAiResponse({ content }, activeMode, dispatch);
     });
     
     // Close the response card
@@ -302,14 +302,20 @@ const AIResponseCard = () => {
   
   // Apply a code block
   const applyCodeBlock = (code, language) => {
-    dispatch(addContentBlock({
-      type: 'code',
-      content: code,
-      title: `generated-${getFileExtension(language)}`,
-      metadata: {
-        language
-      }
-    }));
+    // If we're in code studio, add the code block there directly
+    if (activeMode === 'code') {
+      dispatch(addContentBlock({
+        type: 'code',
+        content: code,
+        title: `generated-${getFileExtension(language)}`,
+        metadata: {
+          language
+        }
+      }));
+    } else {
+      // Otherwise, use the general processAiResponse which will handle it based on mode
+      processAiResponse({ content: code }, activeMode, dispatch);
+    }
     
     dispatch(hideAIResponse());
   };
@@ -317,6 +323,7 @@ const AIResponseCard = () => {
   // Apply content to appropriate workspace based on mode
   const applyToCurrentWorkspace = () => {
     try {
+      // Pass the entire AI response object and the current activeMode
       processAiResponse(aiResponse, activeMode, dispatch);
       
       // Show success notification

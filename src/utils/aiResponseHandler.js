@@ -18,10 +18,12 @@ import { hideAIResponse } from '../redux/slices/uiSlice';
  * @param {function} dispatch - Redux dispatch function
  */
 export const processAiResponse = (response, activeMode, dispatch) => {
+  // Extract content from the response
   const content = typeof response.content === 'string' 
     ? response.content 
     : (response.content?.content || '');
   
+  // Route to the appropriate handler based on the active mode
   switch (activeMode) {
     case 'content':
       applyToContentEditor(content, dispatch);
@@ -36,10 +38,11 @@ export const processAiResponse = (response, activeMode, dispatch) => {
       applyToVisualLab(content, dispatch);
       break;
     default:
+      // If unknown mode, default to content editor
       applyToContentEditor(content, dispatch);
   }
   
-  // Close the AI response card
+  // Close the AI response card after applying
   dispatch(hideAIResponse());
 };
 
@@ -152,14 +155,97 @@ const applyToWorkflowDesigner = (content, dispatch) => {
         }));
       }
     });
-    
-    // Switch to workflow mode if not already there
-    dispatch(setActiveMode('workflow'));
   } else {
-    // Fallback: create a text block with the content if not workflow-specific
-    dispatch(addContentBlock({
-      type: 'text',
-      content
+    // If we couldn't extract workflow information, try to create a simple workflow
+    createSimpleWorkflowFromText(content, dispatch);
+  }
+};
+
+/**
+ * Create a simple workflow from text when specific workflow data can't be extracted
+ * @param {string} content - AI response content
+ * @param {function} dispatch - Redux dispatch function
+ */
+const createSimpleWorkflowFromText = (content, dispatch) => {
+  // Extract steps or concepts from the text
+  const steps = extractSteps(content);
+  
+  if (steps.length > 0) {
+    // Create nodes for each step
+    const nodeIdMap = {};
+    
+    steps.forEach((step, index) => {
+      const nodeId = uuidv4();
+      const nodeType = index === 0 ? 'input' : 
+                     index === steps.length - 1 ? 'output' : 
+                     step.includes('?') ? 'decision' : 'process';
+      
+      nodeIdMap[index] = nodeId;
+      
+      dispatch(addWorkflowNode({
+        id: nodeId,
+        type: nodeType,
+        title: `Step ${index + 1}`,
+        content: step,
+        position: {
+          x: 100 + (index * 220),
+          y: 150
+        },
+        ports: {
+          inputs: [{ id: 'in1', label: 'Input' }],
+          outputs: [{ id: 'out1', label: 'Output' }]
+        }
+      }));
+    });
+    
+    // Connect the nodes sequentially
+    for (let i = 0; i < steps.length - 1; i++) {
+      dispatch(addWorkflowConnection({
+        id: uuidv4(),
+        sourceNodeId: nodeIdMap[i],
+        sourcePortId: 'out1',
+        targetNodeId: nodeIdMap[i + 1],
+        targetPortId: 'in1'
+      }));
+    }
+  } else {
+    // Fallback: create at least 2 nodes if we couldn't extract steps
+    const inputNodeId = uuidv4();
+    const outputNodeId = uuidv4();
+    
+    // Input node
+    dispatch(addWorkflowNode({
+      id: inputNodeId,
+      type: 'input',
+      title: 'Input',
+      content: 'Start process',
+      position: { x: 100, y: 150 },
+      ports: {
+        inputs: [],
+        outputs: [{ id: 'out1', label: 'Output' }]
+      }
+    }));
+    
+    // Output node
+    dispatch(addWorkflowNode({
+      id: outputNodeId,
+      type: 'output',
+      title: 'Output',
+      content: 'End process',
+      position: { x: 350, y: 150 },
+      ports: {
+        inputs: [{ id: 'in1', label: 'Input' }],
+        outputs: []
+      }
+    }));
+    
+    // Connect them
+    dispatch(addWorkflowConnection({
+      id: uuidv4(),
+      sourceNodeId: inputNodeId,
+      sourcePortId: 'out1',
+      targetNodeId: outputNodeId,
+      targetPortId: 'in1'
     }));
   }
 };
@@ -187,15 +273,40 @@ const applyToCodeStudio = (content, dispatch) => {
         }
       }));
     });
-    
-    // Switch to code mode if not already there
-    dispatch(setActiveMode('code'));
   } else {
-    // If no code blocks found, add as text
-    dispatch(addContentBlock({
-      type: 'text',
-      content
-    }));
+    // If no code blocks found, try to extract something code-like
+    if (content.includes('function') || content.includes('class') || 
+        content.includes('const ') || content.includes('var ')) {
+      
+      // Guess the language
+      let language = 'javascript';
+      if (content.includes('def ') || content.includes('import ') && content.includes(':')) {
+        language = 'python';
+      } else if (content.includes('<html') || content.includes('<body')) {
+        language = 'html';
+      } else if (content.includes('.class') || content.includes('#id')) {
+        language = 'css';
+      }
+      
+      dispatch(addContentBlock({
+        type: 'code',
+        content: content,
+        title: `generated-code.${getFileExtension(language)}`,
+        metadata: {
+          language
+        }
+      }));
+    } else {
+      // No code detected, add as a comment
+      dispatch(addContentBlock({
+        type: 'code',
+        content: `// AI Response:\n// ${content.replace(/\n/g, '\n// ')}`,
+        title: 'ai-response.js',
+        metadata: {
+          language: 'javascript'
+        }
+      }));
+    }
   }
 };
 
@@ -228,14 +339,28 @@ const applyToVisualLab = (content, dispatch) => {
         }
       }
     }));
-    
-    // Switch to visual mode if not already there
-    dispatch(setActiveMode('visual'));
   } else {
-    // If no table data found, add as text
+    // If no table data found, create a sample visualization with placeholder data
     dispatch(addContentBlock({
-      type: 'text',
-      content
+      type: 'visualization',
+      title: 'AI Generated Chart',
+      content: 'chart-placeholder',
+      metadata: {
+        chartType: 'bar',
+        chartData: [
+          { category: 'Category A', value: 30 },
+          { category: 'Category B', value: 45 },
+          { category: 'Category C', value: 25 },
+          { category: 'Category D', value: 60 },
+          { category: 'Category E', value: 15 }
+        ],
+        chartConfig: {
+          title: 'Sample Chart',
+          xAxis: 'Categories',
+          yAxis: 'Values',
+          colors: ['#5e35b1', '#03a9f4', '#ff6e40', '#4caf50', '#ffab00']
+        }
+      }
     }));
   }
 };
@@ -309,6 +434,11 @@ const parseContentStructure = (content) => {
   
   // Add the last section if any
   if (currentSection) sections.push(currentSection);
+  
+  // If no sections parsed but we have content, create a text section
+  if (sections.length === 0 && content.trim()) {
+    sections.push({ type: 'text', content: content.trim() });
+  }
   
   return sections;
 };
@@ -404,11 +534,57 @@ const parseWorkflowDescription = (content) => {
 };
 
 /**
+ * Extract steps from AI response content
+ * @param {string} content - AI response content
+ * @returns {Array} - Array of steps
+ */
+const extractSteps = (content) => {
+  const steps = [];
+  
+  // Try to extract numbered list items
+  const numberedStepPattern = /\d+\.\s+(.+?)(?=\n\d+\.|\n\n|$)/gs;
+  let match;
+  while ((match = numberedStepPattern.exec(content)) !== null) {
+    steps.push(match[1].trim());
+  }
+  
+  // If no numbered steps found, try bullet points
+  if (steps.length === 0) {
+    const bulletPattern = /[•\-\*]\s+(.+?)(?=\n[•\-\*]|\n\n|$)/gs;
+    while ((match = bulletPattern.exec(content)) !== null) {
+      steps.push(match[1].trim());
+    }
+  }
+  
+  // If still no steps, try to split by headings or paragraphs
+  if (steps.length === 0) {
+    // Check for headings
+    const headingPattern = /#+\s+(.+?)(?=\n#+|\n\n|$)/gs;
+    while ((match = headingPattern.exec(content)) !== null) {
+      steps.push(match[1].trim());
+    }
+  }
+  
+  // If still nothing, use paragraphs
+  if (steps.length === 0) {
+    // Split by double newlines and filter empty lines
+    const paragraphs = content.split(/\n\n+/).filter(p => p.trim() !== '');
+    if (paragraphs.length >= 2) {
+      return paragraphs.map(p => p.trim());
+    }
+  }
+  
+  return steps;
+};
+
+/**
  * Map node type string to standard types
  * @param {string} typeStr - Node type string
  * @returns {string} - Standardized node type
  */
 const mapNodeType = (typeStr) => {
+  if (!typeStr) return 'default';
+  
   const type = typeStr.toLowerCase();
   
   if (type.includes('input') || type.includes('start')) {
