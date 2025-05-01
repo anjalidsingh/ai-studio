@@ -1,3 +1,4 @@
+/* src/components/ai/PromptArea.css */
 .prompt-area {
     position: fixed;
     bottom: 0;
@@ -7,6 +8,7 @@
     border-top: 1px solid var(--border);
     padding: var(--spacing-md);
     display: flex;
+    flex-wrap: wrap;
     gap: var(--spacing-md);
     align-items: center;
     z-index: 100;
@@ -21,6 +23,42 @@
     to {
       transform: translateY(0);
     }
+  }
+  
+  .prompt-type-toggle {
+    display: flex;
+    width: 100%;
+    max-width: 300px;
+    background-color: var(--bg-color-lighter);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-bottom: var(--spacing-sm);
+  }
+  
+  .prompt-type-btn {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: none;
+    background: none;
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .prompt-type-btn.active {
+    background-color: var(--primary);
+    color: white;
+  }
+  
+  .prompt-type-btn:hover:not(.active) {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--text-primary);
   }
   
   .prompt-input {
@@ -85,5 +123,11 @@
     
     .prompt-area .btn {
       width: 100%;
+    }
+    
+    .prompt-type-toggle {
+      width: 100%;
+      max-width: 100%;
+      margin-bottom: var(--spacing-sm);
     }
   }

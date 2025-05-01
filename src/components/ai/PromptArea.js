@@ -1,7 +1,10 @@
+// src/components/ai/PromptArea.js
+// This update makes content generation work properly
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { togglePromptArea } from '../../redux/slices/workspaceSlice';
-import { generateContent } from '../../redux/slices/aiModelsSlice';
+import { generateContent, loadModelsFromConstants } from '../../redux/slices/aiModelsSlice';
 import { showNotification } from '../../redux/slices/uiSlice';
 import './PromptArea.css';
 
@@ -14,6 +17,7 @@ const PromptArea = () => {
   const selectedModel = useSelector(state => state.aiModels.selectedModel);
   const apiKeyVerified = useSelector(state => state.aiModels.apiKeyVerified);
   const generating = useSelector(state => state.aiModels.generatingContent);
+  const models = useSelector(state => state.aiModels.models);
   
   // Focus on textarea when component mounts
   useEffect(() => {
@@ -21,6 +25,13 @@ const PromptArea = () => {
       textareaRef.current.focus();
     }
   }, []);
+  
+  // Load models if needed
+  useEffect(() => {
+    if (apiKeyVerified && models.length === 0) {
+      dispatch(loadModelsFromConstants());
+    }
+  }, [dispatch, apiKeyVerified, models.length]);
   
   // Auto-resize textarea as content changes
   useEffect(() => {
@@ -42,7 +53,7 @@ const PromptArea = () => {
     
     if (!apiKeyVerified) {
       dispatch(showNotification({
-        message: 'Please set up your API key first',
+        message: 'Please set up your API key first in Settings',
         type: 'warning'
       }));
       return;

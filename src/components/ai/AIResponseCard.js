@@ -1,3 +1,4 @@
+// src/components/ai/AIResponseCard.js
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { hideAIResponse } from '../../redux/slices/uiSlice';
@@ -9,6 +10,7 @@ const AIResponseCard = () => {
   
   // Get AI response data from Redux
   const aiResponse = useSelector(state => state.ui.aiResponse);
+  const activeMode = useSelector(state => state.workspace.activeMode);
   const { content, title } = aiResponse;
   
   // State for handling the dragging functionality
@@ -19,16 +21,38 @@ const AIResponseCard = () => {
   // State to identify selected suggestions for applying
   const [selectedSuggestions, setSelectedSuggestions] = useState([]);
   
+  // State for content type detection
+  const [contentType, setContentType] = useState('text'); // 'text', 'code', 'list'
+  
   // Reset position when the component is first shown
   useEffect(() => {
     setPosition({ x: 0, y: 0 });
-  }, [aiResponse.open]);
+    
+    // Detect content type
+    const contentString = typeof content === 'string' ? content : 
+      (content && typeof content === 'object' && content.content ? content.content : '');
+    
+    // Detect if the content contains code blocks
+    if (contentString.includes('```') || contentString.includes('function') || 
+        contentString.includes('class') || contentString.includes('import') ||
+        contentString.includes('const ') || contentString.includes('var ') ||
+        contentString.includes('let ')) {
+      setContentType('code');
+    } 
+    // Detect if the content is a list
+    else if (contentString.match(/^\d+\.\s+/m) || contentString.match(/^[•\-\*]\s+/m)) {
+      setContentType('list');
+    } else {
+      setContentType('text');
+    }
+  }, [aiResponse.open, content]);
   
   // Parse suggestions from content
   const parseSuggestions = () => {
-    // Simple parsing based on common patterns
     // Check if content is a string before using string methods
-    const contentText = typeof content === 'string' ? content : '';
+    const contentText = typeof content === 'string' ? content : 
+      (content && typeof content === 'object' && content.content ? content.content : '');
+    
     if (!contentText) return [];
     
     const suggestions = [];
@@ -48,6 +72,14 @@ const AIResponseCard = () => {
       }
     }
     
+    // If still empty, try to extract code blocks
+    if (suggestions.length === 0 && contentType === 'code') {
+      const codeBlockRegex = /```(?:\w+)?\n([\s\S]+?)```/g;
+      while ((match = codeBlockRegex.exec(contentText)) !== null) {
+        suggestions.push(match[1].trim());
+      }
+    }
+    
     // If still empty, split by lines
     if (suggestions.length === 0) {
       return contentText.split('\n')
@@ -58,11 +90,34 @@ const AIResponseCard = () => {
     return suggestions;
   };
   
-  const suggestions = parseSuggestions();
+  // Extract code blocks from content
+  const extractCodeBlocks = () => {
+    // Check if content is a string before using string methods
+    const contentText = typeof content === 'string' ? content : 
+      (content && typeof content === 'object' && content.content ? content.content : '');
+    
+    if (!contentText) return [];
+    
+    const codeBlocks = [];
+    const codeBlockRegex = /```(?:(\w+))?\n([\s\S]+?)```/g;
+    let match;
+    
+    while ((match = codeBlockRegex.exec(contentText)) !== null) {
+      const language = match[1] || 'javascript';
+      const code = match[2].trim();
+      codeBlocks.push({ language, code });
+    }
+    
+    return codeBlocks;
+  };
+  
+  const suggestions = contentType === 'list' ? parseSuggestions() : [];
+  const codeBlocks = contentType === 'code' ? extractCodeBlocks() : [];
   
   // Handle mouse down for dragging
   const handleMouseDown = (e) => {
-    if (e.target.closest('.suggestion-item') || e.target.closest('.ai-response-actions')) {
+    if (e.target.closest('.suggestion-item') || e.target.closest('.ai-response-actions') || 
+        e.target.closest('.code-block-actions')) {
       // Don't start dragging if clicking on a suggestion or action button
       return;
     }
@@ -135,6 +190,41 @@ const AIResponseCard = () => {
     dispatch(hideAIResponse());
   };
   
+  // Apply a code block
+  const applyCodeBlock = (code, language) => {
+    dispatch(addContentBlock({
+      type: 'code',
+      content: code,
+      title: `generated-${getFileExtension(language)}`,
+      metadata: {
+        language
+      }
+    }));
+    
+    dispatch(hideAIResponse());
+  };
+  
+  // Helper to get file extension from language
+  const getFileExtension = (language) => {
+    switch (language.toLowerCase()) {
+      case 'javascript':
+      case 'js':
+        return 'js';
+      case 'python':
+      case 'py':
+        return 'py';
+      case 'html':
+        return 'html';
+      case 'css':
+        return 'css';
+      case 'typescript':
+      case 'ts':
+        return 'ts';
+      default:
+        return 'txt';
+    }
+  };
+  
   // Position styles with transform
   const cardStyle = {
     transform: `translate(${position.x}px, ${position.y}px)`,
@@ -153,7 +243,7 @@ const AIResponseCard = () => {
       onMouseDown={handleMouseDown}
     >
       <div className="ai-response-header">
-        <div>{title || 'AI Suggestions'}</div>
+        <div>{title || 'AI Response'}</div>
         <button 
           className="close-button"
           onClick={() => dispatch(hideAIResponse())}
@@ -164,7 +254,7 @@ const AIResponseCard = () => {
       </div>
       
       <div className="ai-response-content">
-        {suggestions.length > 0 ? (
+        {contentType === 'list' && suggestions.length > 0 ? (
           <div className="suggestion-list">
             {suggestions.map((suggestion, index) => (
               <div 
@@ -179,8 +269,34 @@ const AIResponseCard = () => {
               </div>
             ))}
           </div>
+        ) : contentType === 'code' && codeBlocks.length > 0 ? (
+          <div className="code-blocks">
+            {codeBlocks.map((block, index) => (
+              <div key={index} className="code-block">
+                <div className="code-block-header">
+                  <span className="code-language">{block.language}</span>
+                  <div className="code-block-actions">
+                    <button 
+                      className="code-action-btn"
+                      onClick={() => applyCodeBlock(block.code, block.language)}
+                      title="Apply this code"
+                    >
+                      <i className="fas fa-check"></i>
+                    </button>
+                  </div>
+                </div>
+                <pre className="code-content">
+                  <code>{block.code}</code>
+                </pre>
+              </div>
+            ))}
+          </div>
         ) : (
-          <p>{displayContent}</p>
+          <div className="text-content">
+            {displayContent.split('\n').map((line, index) => (
+              <p key={index}>{line}</p>
+            ))}
+          </div>
         )}
       </div>
       
@@ -191,14 +307,41 @@ const AIResponseCard = () => {
         >
           Dismiss
         </button>
-        <button 
-          className="btn"
-          onClick={applySuggestions}
-        >
-          {selectedSuggestions.length > 0 
-            ? `Apply (${selectedSuggestions.length})` 
-            : 'Apply All'}
-        </button>
+        
+        {contentType === 'list' && suggestions.length > 0 && (
+          <button 
+            className="btn"
+            onClick={applySuggestions}
+          >
+            {selectedSuggestions.length > 0 
+              ? `Apply (${selectedSuggestions.length})` 
+              : 'Apply All'}
+          </button>
+        )}
+        
+        {contentType === 'code' && codeBlocks.length > 0 && (
+          <button 
+            className="btn"
+            onClick={() => applyCodeBlock(codeBlocks[0].code, codeBlocks[0].language)}
+          >
+            Apply Code
+          </button>
+        )}
+        
+        {contentType === 'text' && (
+          <button 
+            className="btn"
+            onClick={() => {
+              dispatch(addContentBlock({
+                type: 'text',
+                content: displayContent
+              }));
+              dispatch(hideAIResponse());
+            }}
+          >
+            Add to Project
+          </button>
+        )}
       </div>
     </div>
   );

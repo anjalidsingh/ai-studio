@@ -1,8 +1,11 @@
+// src/pages/Settings.js modification
+// This update improves the API key setup UI and behavior
+
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { updateUserSettings, fetchUserSettings } from '../redux/slices/userSlice';
-import { setApiKey, setApiKeyVerified } from '../redux/slices/aiModelsSlice';
+import { setApiKey, loadModelsFromConstants } from '../redux/slices/aiModelsSlice';
 import { showNotification } from '../redux/slices/uiSlice';
 import { clearAllData, deleteApiKey } from '../api/localStorage';
 import { useTheme } from '../context/ThemeContext';
@@ -33,7 +36,6 @@ const Settings = () => {
   
   // Local state for loading states
   const [saving, setSaving] = useState(false);
-  const [verifyingKey, setVerifyingKey] = useState(false);
   const [clearing, setClearing] = useState(false);
   
   // Fetch user settings when component mounts
@@ -49,9 +51,10 @@ const Settings = () => {
       autoSave: userSettings.autoSave,
       defaultProjectType: userSettings.defaultProjectType,
       fontSize: userSettings.editorPreferences?.fontSize || 14,
-      showReasoningByDefault: userSettings.showReasoningByDefault
+      showReasoningByDefault: userSettings.showReasoningByDefault,
+      apiKey: apiKey || ''
     }));
-  }, [userSettings, theme]);
+  }, [userSettings, theme, apiKey]);
   
   // Handle form field changes
   const handleChange = (e) => {
@@ -64,6 +67,12 @@ const Settings = () => {
     // Immediately apply theme changes
     if (name === 'theme') {
       setTheme(value);
+    }
+    
+    // Immediately apply API key
+    if (name === 'apiKey') {
+      // This will trigger when the user is typing the API key
+      // We don't want to set it in Redux until they save or apply
     }
   };
   
@@ -88,9 +97,10 @@ const Settings = () => {
       
       // Update API key if changed
       if (formValues.apiKey !== apiKey) {
-        // Reset verification status when key changes
         dispatch(setApiKey(formValues.apiKey));
-        dispatch(setApiKeyVerified(false));
+        
+        // Load models from constants after setting API key
+        dispatch(loadModelsFromConstants());
       }
       
       dispatch(showNotification({
@@ -108,8 +118,8 @@ const Settings = () => {
     }
   };
   
-  // Verify API key
-  const handleVerifyKey = async () => {
+  // Apply API key immediately
+  const handleApplyApiKey = () => {
     if (!formValues.apiKey.trim()) {
       dispatch(showNotification({
         message: 'Please enter an API key',
@@ -118,35 +128,16 @@ const Settings = () => {
       return;
     }
     
-    try {
-      setVerifyingKey(true);
-      
-      // Update the API key in Redux state
-      dispatch(setApiKey(formValues.apiKey));
-      
-      // This would trigger a verification process
-      // In a real app, you would call an API to verify the key
-      
-      // Simulate delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Assume successful verification for demo
-      dispatch(setApiKeyVerified(true));
-      
-      dispatch(showNotification({
-        message: 'API key verified successfully',
-        type: 'success'
-      }));
-    } catch (error) {
-      console.error('Error verifying API key:', error);
-      dispatch(showNotification({
-        message: 'Failed to verify API key',
-        type: 'error'
-      }));
-      dispatch(setApiKeyVerified(false));
-    } finally {
-      setVerifyingKey(false);
-    }
+    // Update the API key in Redux and mark as verified
+    dispatch(setApiKey(formValues.apiKey));
+    
+    // Load models from constants
+    dispatch(loadModelsFromConstants());
+    
+    dispatch(showNotification({
+      message: 'API key applied successfully',
+      type: 'success'
+    }));
   };
   
   // Clear all data
@@ -168,7 +159,6 @@ const Settings = () => {
       // Remove API key
       await deleteApiKey('openrouter');
       dispatch(setApiKey(null));
-      dispatch(setApiKeyVerified(false));
       
       dispatch(showNotification({
         message: 'All data cleared successfully',
@@ -312,20 +302,10 @@ const Settings = () => {
               <button 
                 type="button"
                 className="btn secondary"
-                onClick={handleVerifyKey}
-                disabled={verifyingKey}
+                onClick={handleApplyApiKey}
               >
-                {verifyingKey ? (
-                  <>
-                    <span className="spinner-small dark"></span>
-                    <span>Verifying...</span>
-                  </>
-                ) : (
-                  <>
-                    <i className="fas fa-check-circle"></i>
-                    <span>Verify</span>
-                  </>
-                )}
+                <i className="fas fa-check-circle"></i>
+                <span>Apply</span>
               </button>
             </div>
             
@@ -333,18 +313,18 @@ const Settings = () => {
               {apiKeyVerified ? (
                 <>
                   <i className="fas fa-check-circle"></i>
-                  <span>API key verified</span>
+                  <span>API key set successfully</span>
                 </>
               ) : (
                 <>
                   <i className="fas fa-info-circle"></i>
-                  <span>API key not verified</span>
+                  <span>No API key set</span>
                 </>
               )}
             </div>
             
             <div className="form-help">
-              <p>Get a free API key from <a href="https://openrouter.ai" target="_blank" rel="noreferrer">OpenRouter</a></p>
+              <p>For demo purposes, you can enter any text as an API key - we're using built-in models</p>
             </div>
           </div>
         </div>

@@ -1,3 +1,6 @@
+// src/components/workspace/CodeStudio.js
+// This update improves file creation and updating in CodeStudio
+
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { v4 as uuidv4 } from 'uuid';
@@ -84,6 +87,7 @@ const CodeStudio = () => {
       
       // Create block in Redux
       dispatch(addContentBlock({
+        id: defaultFileId, // Explicitly set ID to maintain consistency
         type: 'code',
         content: defaultFile.content,
         title: defaultFile.name,
@@ -177,6 +181,7 @@ const CodeStudio = () => {
     
     // Create block in Redux
     dispatch(addContentBlock({
+      id: newFileId, // Explicitly set ID to maintain consistency
       type: 'code',
       content: '',
       title: fileName,

@@ -1,3 +1,6 @@
+// src/pages/Studio.js
+// This update ensures proper initialization of the application
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -15,6 +18,7 @@ import { loadProject } from '../api/localStorage';
 import { setActiveMode } from '../redux/slices/workspaceSlice';
 import { addRecentProject } from '../redux/slices/userSlice';
 import { showNotification } from '../redux/slices/uiSlice';
+import { loadModelsFromConstants } from '../redux/slices/aiModelsSlice';
 import './Studio.css';
 
 const Studio = () => {
@@ -31,6 +35,14 @@ const Studio = () => {
   const toolsPanelOpen = useSelector(state => state.workspace.toolsPanelOpen);
   const promptAreaOpen = useSelector(state => state.workspace.promptAreaOpen);
   const aiResponse = useSelector(state => state.ui.aiResponse);
+  const apiKeyVerified = useSelector(state => state.aiModels.apiKeyVerified);
+  
+  // Load models if API key is verified
+  useEffect(() => {
+    if (apiKeyVerified) {
+      dispatch(loadModelsFromConstants());
+    }
+  }, [dispatch, apiKeyVerified]);
   
   // Load the project when component mounts or projectId changes
   useEffect(() => {
@@ -46,10 +58,30 @@ const Studio = () => {
         
         if (!project) {
           dispatch(showNotification({
-            message: 'Project not found',
-            type: 'error'
+            message: 'Project not found. Creating a new project.',
+            type: 'warning'
           }));
-          navigate('/');
+          
+          // Create a default project
+          const defaultProject = {
+            id: projectId,
+            title: 'New Project',
+            type: 'content',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            content: {
+              blocks: [],
+              version: '1.0'
+            }
+          };
+          
+          // Set the default project in Redux state
+          dispatch(setCurrentProject(defaultProject));
+          
+          // Set active mode based on project type
+          dispatch(setActiveMode('content'));
+          
+          setLoading(false);
           return;
         }
         
@@ -66,9 +98,26 @@ const Studio = () => {
       } catch (error) {
         console.error('Error loading project:', error);
         dispatch(showNotification({
-          message: 'Failed to load project',
+          message: 'Failed to load project. Creating a new one.',
           type: 'error'
         }));
+        
+        // Create a default project
+        const defaultProject = {
+          id: projectId,
+          title: 'New Project',
+          type: 'content',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          content: {
+            blocks: [],
+            version: '1.0'
+          }
+        };
+        
+        // Set the default project in Redux state
+        dispatch(setCurrentProject(defaultProject));
+        
       } finally {
         setLoading(false);
       }

@@ -1,7 +1,10 @@
+// src/components/layout/ToolsPanel.js
+// This update makes the ToolsPanel load models from constants
+
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toggleToolsPanel } from '../../redux/slices/workspaceSlice';
-import { selectModel } from '../../redux/slices/aiModelsSlice';
+import { selectModel, loadModelsFromConstants } from '../../redux/slices/aiModelsSlice';
 import { openModal } from '../../redux/slices/uiSlice';
 import ModelSelector from '../ai/ModelSelector';
 import CreativeToolkit from '../ai/CreativeToolkit';
@@ -15,6 +18,7 @@ const ToolsPanel = () => {
   const selectedModel = useSelector(state => state.aiModels.selectedModel);
   const models = useSelector(state => state.aiModels.models);
   const apiKeyVerified = useSelector(state => state.aiModels.apiKeyVerified);
+  const loadingModels = useSelector(state => state.aiModels.loadingModels);
   
   // Local state for expanded sections
   const [expandedSections, setExpandedSections] = useState({
@@ -63,6 +67,13 @@ const ToolsPanel = () => {
         break;
     }
   }, [activeMode]);
+  
+  // Load models from constants when component mounts
+  useEffect(() => {
+    if (apiKeyVerified && models.length === 0) {
+      dispatch(loadModelsFromConstants());
+    }
+  }, [dispatch, apiKeyVerified, models.length]);
   
   // Toggle section expanded state
   const toggleSection = (section) => {
@@ -124,10 +135,20 @@ const ToolsPanel = () => {
                   <i className="fas fa-key"></i> Set API Key
                 </button>
               </div>
-            ) : models.length === 0 ? (
+            ) : loadingModels ? (
               <div className="loading-models">
                 <div className="spinner"></div>
                 <p>Loading available models...</p>
+              </div>
+            ) : models.length === 0 ? (
+              <div className="loading-models">
+                <p>No models available</p>
+                <button 
+                  className="btn sm"
+                  onClick={() => dispatch(loadModelsFromConstants())}
+                >
+                  <i className="fas fa-sync"></i> Load Models
+                </button>
               </div>
             ) : (
               <ModelSelector 
