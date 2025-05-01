@@ -1,11 +1,11 @@
 // src/components/ai/PromptArea.js
-// This update makes content generation work properly
+// This update makes content generation work properly and shows AI response
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { togglePromptArea } from '../../redux/slices/workspaceSlice';
 import { generateContent, loadModelsFromConstants } from '../../redux/slices/aiModelsSlice';
-import { showNotification } from '../../redux/slices/uiSlice';
+import { showNotification, showAIResponse } from '../../redux/slices/uiSlice';
 import './PromptArea.css';
 
 const PromptArea = () => {
@@ -69,10 +69,16 @@ const PromptArea = () => {
     
     try {
       // Generate content using the selected model
-      await dispatch(generateContent({
+      const result = await dispatch(generateContent({
         prompt: prompt.trim(),
         model: selectedModel
       })).unwrap();
+      
+      // Show the AI response card with the generated content
+      dispatch(showAIResponse({
+        title: 'AI Response',
+        content: result.result.content
+      }));
       
       // Clear prompt and close prompt area on success
       setPrompt('');

@@ -27,7 +27,8 @@ const CreativeToolkit = ({ mode = 'content' }) => {
       { id: 'chart', icon: 'fas fa-chart-bar', name: 'Charts' },
       { id: 'embed', icon: 'fas fa-file-alt', name: 'Embed' },
       { id: 'link', icon: 'fas fa-link', name: 'Links' },
-      { id: 'comment', icon: 'fas fa-comment', name: 'Comments' }
+      { id: 'comment', icon: 'fas fa-comment', name: 'Comments' },
+      { id: 'add', icon: 'fas fa-plus-circle', name: 'Add' } // Added new Add button
     ];
     
     // Add mode-specific tools

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { v4 as uuidv4 } from 'uuid';
 import { 
@@ -10,6 +10,7 @@ import {
 } from '../../redux/slices/workspaceSlice';
 import { togglePromptArea } from '../../redux/slices/workspaceSlice';
 import { showAIResponse } from '../../redux/slices/uiSlice';
+import GenerateCard from '../editor/GenerateCard';
 import './WorkflowDesigner.css';
 
 const WorkflowDesigner = () => {
@@ -26,9 +27,11 @@ const WorkflowDesigner = () => {
   const [connectingPort, setConnectingPort] = useState(null);
   const [connectionLine, setConnectionLine] = useState(null);
   const [mousePosInCanvas, setMousePosInCanvas] = useState({ x: 0, y: 0 });
+  const [nodeBeingEdited, setNodeBeingEdited] = useState(null);
+  const [editedNodeContent, setEditedNodeContent] = useState('');
   
   // Reference to the canvas element
-  const canvasRef = React.useRef(null);
+  const canvasRef = useRef(null);
   
   // Handle node selection
   const handleNodeSelect = (nodeId) => {
@@ -168,14 +171,24 @@ const WorkflowDesigner = () => {
       targetPortId = connectingPort.portId;
     }
     
-    // Create the connection in Redux
-    dispatch(addWorkflowConnection({
-      id: uuidv4(),
-      sourceNodeId,
-      sourcePortId,
-      targetNodeId,
-      targetPortId
-    }));
+    // Check if connection already exists
+    const connectionExists = connections.some(
+      conn => conn.sourceNodeId === sourceNodeId &&
+              conn.sourcePortId === sourcePortId &&
+              conn.targetNodeId === targetNodeId &&
+              conn.targetPortId === targetPortId
+    );
+    
+    if (!connectionExists) {
+      // Create the connection in Redux
+      dispatch(addWorkflowConnection({
+        id: uuidv4(),
+        sourceNodeId,
+        sourcePortId,
+        targetNodeId,
+        targetPortId
+      }));
+    }
     
     // Reset connection state
     setConnectingPort(null);
@@ -202,24 +215,70 @@ const WorkflowDesigner = () => {
       y: canvasRef.current ? canvasRef.current.offsetHeight / 2 - 50 : 100
     };
     
+    // Determine number of ports based on node type
+    let inputs = [{ id: 'in1', label: 'Input' }];
+    let outputs = [{ id: 'out1', label: 'Output' }];
+    
+    if (type === 'decision') {
+      outputs = [
+        { id: 'out1', label: 'True' },
+        { id: 'out2', label: 'False' }
+      ];
+    } else if (type === 'input') {
+      inputs = [];
+      outputs = [{ id: 'out1', label: 'Output' }];
+    } else if (type === 'output') {
+      inputs = [{ id: 'in1', label: 'Input' }];
+      outputs = [];
+    }
+    
     const newNode = {
       id: uuidv4(),
       type,
       title: getNodeTitle(type),
       position: defaultPos,
-      ports: {
-        inputs: [{ id: 'in1', label: 'Input' }],
-        outputs: [{ id: 'out1', label: 'Output' }]
-      }
+      content: getDefaultContent(type),
+      ports: { inputs, outputs }
     };
     
     dispatch(addWorkflowNode(newNode));
+    setSelectedNode(newNode.id);
   };
   
   // Delete selected node
   const handleDeleteNode = (nodeId) => {
     dispatch(removeWorkflowNode(nodeId));
     setSelectedNode(null);
+  };
+  
+  // Delete a connection
+  const handleDeleteConnection = (sourceNodeId, sourcePortId, targetNodeId, targetPortId) => {
+    dispatch(removeWorkflowConnection({
+      sourceNodeId,
+      sourcePortId,
+      targetNodeId,
+      targetPortId
+    }));
+  };
+  
+  // Enter edit mode for a node
+  const handleEditNode = (nodeId) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (node) {
+      setNodeBeingEdited(nodeId);
+      setEditedNodeContent(node.content || '');
+    }
+  };
+  
+  // Save node content changes
+  const handleSaveNodeContent = () => {
+    if (nodeBeingEdited) {
+      dispatch(updateWorkflowNode({
+        id: nodeBeingEdited,
+        content: editedNodeContent
+      }));
+      setNodeBeingEdited(null);
+    }
   };
   
   // Get node title based on type
@@ -235,6 +294,22 @@ const WorkflowDesigner = () => {
         return 'Decision';
       default:
         return 'Node';
+    }
+  };
+  
+  // Get default content based on node type
+  const getDefaultContent = (type) => {
+    switch (type) {
+      case 'input':
+        return 'Start process';
+      case 'process':
+        return 'Process data';
+      case 'output':
+        return 'End process';
+      case 'decision':
+        return 'Check condition';
+      default:
+        return 'Node content';
     }
   };
   
@@ -256,13 +331,43 @@ const WorkflowDesigner = () => {
   
   // Ask AI for workflow suggestions
   const handleAIHelp = () => {
+    const workflowDescription = nodes.length > 0 ? 
+      `Current workflow has ${nodes.length} nodes: ` + 
+      nodes.map(node => `"${node.title}" (${node.type})`).join(', ') + '. ' :
+      '';
+    
+    const prompt = workflowDescription + `Please help me improve this workflow by suggesting additional nodes and connections. I need a complete process flow with proper input, processing, and output stages.`;
+    
     dispatch(togglePromptArea());
     
     // In a real implementation, this would be integrated with actual AI
     setTimeout(() => {
       dispatch(showAIResponse({
         title: 'Workflow Suggestions',
-        content: 'Here are some suggestions to improve your workflow:\n\n1. Add an input node to receive data\n2. Connect to a processing node for data transformation\n3. Add a decision node for conditional routing\n4. Connect outputs to appropriate endpoint nodes'
+        content: 
+        `# Improved Workflow Design
+
+Based on your current workflow, I recommend enhancing it with the following structure:
+
+## Node Structure
+
+1. **Start with an Input Node** - This serves as the entry point for your workflow
+2. **Add a Data Validation Process** - Verify incoming data meets requirements
+3. **Add a Decision Node** - Branch the workflow based on validation results
+4. **Add Processing Nodes** - Handle the core business logic in these nodes
+5. **Finish with Output Nodes** - Provide appropriate outputs for each path
+
+## Implementation Details
+
+- Create an "Input" node called "Data Entry"
+- Connect "Data Entry" to a "Process" node called "Validation"
+- Connect "Validation" to a "Decision" node called "Is Valid?"
+- From "Is Valid?", create two paths:
+  - True path connects to "Process" node called "Data Processing"
+  - False path connects to "Output" node called "Error Handling"
+- Connect "Data Processing" to "Output" node called "Success"
+
+Would you like me to help implement any specific part of this workflow?`
       }));
     }, 500);
   };
@@ -274,17 +379,209 @@ const WorkflowDesigner = () => {
     
     if (!sourceNode || !targetNode) return '';
     
+    // Find output port position (right side of source node)
+    const outputPort = sourceNode.ports.outputs.find(p => p.id === connection.sourcePortId);
+    const outputIndex = sourceNode.ports.outputs.indexOf(outputPort);
+    const totalOutputs = sourceNode.ports.outputs.length;
+    const outputOffset = outputIndex !== -1 ? 
+      (outputIndex - (totalOutputs - 1) / 2) * 20 : 0;
+    
+    // Find input port position (left side of target node)
+    const inputPort = targetNode.ports.inputs.find(p => p.id === connection.targetPortId);
+    const inputIndex = targetNode.ports.inputs.indexOf(inputPort);
+    const totalInputs = targetNode.ports.inputs.length;
+    const inputOffset = inputIndex !== -1 ? 
+      (inputIndex - (totalInputs - 1) / 2) * 20 : 0;
+    
     // Calculate connection points
     const startX = sourceNode.position.x + 180; // Right side
-    const startY = sourceNode.position.y + 40; // Middle
+    const startY = sourceNode.position.y + 40 + outputOffset; // Middle with offset
     const endX = targetNode.position.x; // Left side
-    const endY = targetNode.position.y + 40; // Middle
+    const endY = targetNode.position.y + 40 + inputOffset; // Middle with offset
     
-    // Control points for curve
-    const midX = (startX + endX) / 2;
+    // Control points for curve - adjust based on distance
+    const distance = Math.abs(endX - startX);
+    const curvature = Math.min(distance * 0.5, 100); // Limit curvature
     
     // Create bezier curve path
-    return `M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`;
+    return `M ${startX} ${startY} C ${startX + curvature} ${startY}, ${endX - curvature} ${endY}, ${endX} ${endY}`;
+  };
+  
+  // Import workflow from JSON
+  const importWorkflow = (jsonData) => {
+    try {
+      const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+      
+      if (data && data.nodes && Array.isArray(data.nodes)) {
+        // Clear existing nodes and connections
+        nodes.forEach(node => dispatch(removeWorkflowNode(node.id)));
+        
+        // Import nodes
+        data.nodes.forEach(node => {
+          dispatch(addWorkflowNode({
+            ...node,
+            id: node.id || uuidv4() // Use existing ID or generate new one
+          }));
+        });
+        
+        // Import connections
+        if (data.connections && Array.isArray(data.connections)) {
+          data.connections.forEach(conn => {
+            dispatch(addWorkflowConnection({
+              ...conn,
+              id: conn.id || uuidv4()
+            }));
+          });
+        }
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error importing workflow:', error);
+      return false;
+    }
+  };
+  
+  // Export workflow to JSON
+  const exportWorkflow = () => {
+    try {
+      const workflow = {
+        nodes,
+        connections
+      };
+      
+      return JSON.stringify(workflow, null, 2);
+    } catch (error) {
+      console.error('Error exporting workflow:', error);
+      return null;
+    }
+  };
+  
+  // Find optimal positions for new nodes based on workflow description
+  const createNodesFromDescription = (description) => {
+    // This is a placeholder for actual NLP processing
+    // In a real app, you would use NLP to extract nodes and connections
+    
+    // For demo, let's create a simple workflow
+    const baseX = canvasRef.current ? canvasRef.current.offsetWidth / 2 - 250 : 100;
+    const baseY = canvasRef.current ? canvasRef.current.offsetHeight / 2 - 50 : 100;
+    
+    // Create input node
+    const inputNode = {
+      id: uuidv4(),
+      type: 'input',
+      title: 'Data Entry',
+      position: { x: baseX, y: baseY },
+      content: 'Start workflow process',
+      ports: {
+        inputs: [],
+        outputs: [{ id: 'out1', label: 'Output' }]
+      }
+    };
+    
+    // Create process node
+    const processNode = {
+      id: uuidv4(),
+      type: 'process',
+      title: 'Data Processing',
+      position: { x: baseX + 250, y: baseY },
+      content: 'Process the input data',
+      ports: {
+        inputs: [{ id: 'in1', label: 'Input' }],
+        outputs: [{ id: 'out1', label: 'Output' }]
+      }
+    };
+    
+    // Create decision node
+    const decisionNode = {
+      id: uuidv4(),
+      type: 'decision',
+      title: 'Validation',
+      position: { x: baseX + 500, y: baseY },
+      content: 'Is data valid?',
+      ports: {
+        inputs: [{ id: 'in1', label: 'Input' }],
+        outputs: [
+          { id: 'out1', label: 'True' },
+          { id: 'out2', label: 'False' }
+        ]
+      }
+    };
+    
+    // Create success output node
+    const successNode = {
+      id: uuidv4(),
+      type: 'output',
+      title: 'Success',
+      position: { x: baseX + 750, y: baseY - 80 },
+      content: 'Operation completed successfully',
+      ports: {
+        inputs: [{ id: 'in1', label: 'Input' }],
+        outputs: []
+      }
+    };
+    
+    // Create error output node
+    const errorNode = {
+      id: uuidv4(),
+      type: 'output',
+      title: 'Error',
+      position: { x: baseX + 750, y: baseY + 80 },
+      content: 'Operation failed',
+      ports: {
+        inputs: [{ id: 'in1', label: 'Input' }],
+        outputs: []
+      }
+    };
+    
+    // Add nodes
+    dispatch(addWorkflowNode(inputNode));
+    dispatch(addWorkflowNode(processNode));
+    dispatch(addWorkflowNode(decisionNode));
+    dispatch(addWorkflowNode(successNode));
+    dispatch(addWorkflowNode(errorNode));
+    
+    // Add connections
+    dispatch(addWorkflowConnection({
+      id: uuidv4(),
+      sourceNodeId: inputNode.id,
+      sourcePortId: 'out1',
+      targetNodeId: processNode.id,
+      targetPortId: 'in1'
+    }));
+    
+    dispatch(addWorkflowConnection({
+      id: uuidv4(),
+      sourceNodeId: processNode.id,
+      sourcePortId: 'out1',
+      targetNodeId: decisionNode.id,
+      targetPortId: 'in1'
+    }));
+    
+    dispatch(addWorkflowConnection({
+      id: uuidv4(),
+      sourceNodeId: decisionNode.id,
+      sourcePortId: 'out1',
+      targetNodeId: successNode.id,
+      targetPortId: 'in1'
+    }));
+    
+    dispatch(addWorkflowConnection({
+      id: uuidv4(),
+      sourceNodeId: decisionNode.id,
+      sourcePortId: 'out2',
+      targetNodeId: errorNode.id,
+      targetPortId: 'in1'
+    }));
+  };
+  
+  // Process AI-suggested workflow
+  const processAISuggestion = (suggestion) => {
+    // In a real app, this would parse natural language into a workflow
+    // For demo, we'll just create a simple workflow
+    createNodesFromDescription(suggestion);
   };
   
   return (
@@ -361,11 +658,27 @@ const WorkflowDesigner = () => {
         <svg className="connections-layer">
           {/* Existing connections */}
           {connections.map(conn => (
-            <path
-              key={conn.id}
-              d={getConnectionPath(conn)}
-              className="connection-path"
-            />
+            <g key={conn.id} className="connection-group">
+              <path
+                d={getConnectionPath(conn)}
+                className="connection-path"
+              />
+              
+              {/* Add small delete button on connection path */}
+              <g 
+                className="connection-delete-btn" 
+                onClick={() => handleDeleteConnection(
+                  conn.sourceNodeId, 
+                  conn.sourcePortId, 
+                  conn.targetNodeId, 
+                  conn.targetPortId
+                )}
+                transform={`translate(${getConnectionMidpoint(conn)})`}
+              >
+                <circle cx="0" cy="0" r="8" fill="#fff" stroke="#ddd" />
+                <text x="0" y="0" textAnchor="middle" dominantBaseline="middle" fontSize="10">×</text>
+              </g>
+            </g>
           ))}
           
           {/* Currently drawing connection */}
@@ -394,7 +707,16 @@ const WorkflowDesigner = () => {
               <span className="node-title">{node.title}</span>
               <div className="node-controls">
                 <button
-                  className="node-control"
+                  className="node-control edit-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditNode(node.id);
+                  }}
+                >
+                  <i className="fas fa-pencil-alt"></i>
+                </button>
+                <button
+                  className="node-control delete-btn"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteNode(node.id);
@@ -406,7 +728,32 @@ const WorkflowDesigner = () => {
             </div>
             
             <div className="node-content">
-              {node.type === 'decision' ? 'If condition is true' : 'Process data'}
+              {nodeBeingEdited === node.id ? (
+                <div className="node-content-editor">
+                  <textarea
+                    value={editedNodeContent}
+                    onChange={(e) => setEditedNodeContent(e.target.value)}
+                    onBlur={handleSaveNodeContent}
+                    autoFocus
+                  />
+                  <button 
+                    className="save-content-btn"
+                    onClick={handleSaveNodeContent}
+                  >
+                    <i className="fas fa-check"></i>
+                  </button>
+                </div>
+              ) : (
+                node.content || (
+                  node.type === 'decision' ? 
+                    'Check condition' : 
+                    node.type === 'process' ?
+                      'Process data' :
+                      node.type === 'input' ?
+                        'Start' :
+                        'End'
+                )
+              )}
             </div>
             
             <div className="node-ports">
@@ -449,17 +796,41 @@ const WorkflowDesigner = () => {
             </div>
             <h3>Start Building Your Workflow</h3>
             <p>Add nodes from the toolbar above and connect them to create a workflow</p>
-            <button 
-              className="btn"
-              onClick={() => handleAddNode('input', { x: 100, y: 150 })}
-            >
-              <i className="fas fa-plus"></i> Add First Node
-            </button>
+            
+            <div className="empty-actions">
+              <button 
+                className="btn"
+                onClick={() => handleAddNode('input', { x: 100, y: 150 })}
+              >
+                <i className="fas fa-plus"></i> Add First Node
+              </button>
+              
+              <button 
+                className="btn accent"
+                onClick={handleAIHelp}
+              >
+                <i className="fas fa-robot"></i> Get AI Suggestions
+              </button>
+            </div>
+            
+            <GenerateCard 
+              onClick={handleAIHelp}
+              title="Let AI Design Your Workflow"
+              description="AI can suggest an optimized workflow based on common patterns and best practices"
+              icon="fas fa-sitemap"
+            />
           </div>
         )}
       </div>
     </div>
   );
 };
+
+// Helper function to calculate the midpoint of a connection
+function getConnectionMidpoint(connection) {
+  // This is a placeholder since actual calculation depends on the connection path
+  // In a real app, you'd calculate this based on the path
+  return "50%,0";
+}
 
 export default WorkflowDesigner;

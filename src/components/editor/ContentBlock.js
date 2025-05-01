@@ -45,6 +45,22 @@ const ContentBlock = ({ block, onUpdate, onDelete }) => {
     }
   };
   
+  // Parse markdown formatting in text
+  const parseMarkdownFormatting = (text) => {
+    if (!text) return text;
+    
+    // Handle bold text (**text**)
+    let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Handle italic text (*text*)
+    formattedText = formattedText.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // Handle inline code (`code`)
+    formattedText = formattedText.replace(/`(.*?)`/g, '<code>$1</code>');
+    
+    return formattedText;
+  };
+  
   // Render different block types
   const renderBlockContent = () => {
     if (editing) {
@@ -79,30 +95,48 @@ const ContentBlock = ({ block, onUpdate, onDelete }) => {
     
     switch (block.type) {
       case 'heading':
-        return <h1 className="block-heading">{content}</h1>;
+        return <h1 className="block-heading" dangerouslySetInnerHTML={{ __html: parseMarkdownFormatting(content) }} />;
         
       case 'subheading':
-        return <h2 className="block-subheading">{content}</h2>;
+        return <h2 className="block-subheading" dangerouslySetInnerHTML={{ __html: parseMarkdownFormatting(content) }} />;
         
       case 'text':
         return (
           <div className="block-text">
             {content.split('\n').map((paragraph, i) => (
-              <p key={i}>{paragraph}</p>
+              <p key={i} dangerouslySetInnerHTML={{ __html: parseMarkdownFormatting(paragraph) }} />
             ))}
           </div>
         );
         
       case 'list':
-        return (
-          <div className="block-list">
-            <ul>
-              {content.split('\n').map((item, i) => (
-                <li key={i}>{item.replace(/^-\s*/, '')}</li>
-              ))}
-            </ul>
-          </div>
-        );
+        // Check if it's a numbered list (starts with 1., 2., etc)
+        const isNumbered = content.trim().match(/^\d+\.\s/);
+        if (isNumbered) {
+          return (
+            <div className="block-list">
+              <ol>
+                {content.split('\n').map((item, i) => {
+                  // Remove the number prefix
+                  const cleanItem = item.replace(/^\d+\.\s*/, '');
+                  return <li key={i} dangerouslySetInnerHTML={{ __html: parseMarkdownFormatting(cleanItem) }} />;
+                })}
+              </ol>
+            </div>
+          );
+        } else {
+          return (
+            <div className="block-list">
+              <ul>
+                {content.split('\n').map((item, i) => {
+                  // Remove the bullet prefix
+                  const cleanItem = item.replace(/^[-*•]\s*/, '');
+                  return <li key={i} dangerouslySetInnerHTML={{ __html: parseMarkdownFormatting(cleanItem) }} />;
+                })}
+              </ul>
+            </div>
+          );
+        }
         
       case 'code':
         return (
@@ -128,7 +162,7 @@ const ContentBlock = ({ block, onUpdate, onDelete }) => {
         );
         
       default:
-        return <div className="block-text">{content}</div>;
+        return <div className="block-text" dangerouslySetInnerHTML={{ __html: parseMarkdownFormatting(content) }} />;
     }
   };
   
